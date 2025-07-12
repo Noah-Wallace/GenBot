@@ -6,8 +6,8 @@ from werkzeug.utils import secure_filename
 import os
 from utils import extract_text, chunk_text, embed_chunks, search_top_chunks, ask_groq_llm
 
-#app = Flask(__name__)
-app = Flask(__name__, static_folder='static', static_url_path='/static')
+app = Flask(__name__)
+#app = Flask(__name__, static_folder='static', static_url_path='/static')
 app.secret_key = 'your-secret-key-here'  # Required for flash messages
 
 # Configuration
@@ -16,7 +16,10 @@ app.config['UPLOAD_FOLDER'] = 'uploads'
 ALLOWED_EXTENSIONS = {'pdf', 'txt', 'docx', 'doc'}
 
 # Ensure upload directory exists
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+#os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+upload_folder = 'uploads'
+if not os.path.exists(upload_folder):
+    os.makedirs(upload_folder)
 
 def allowed_file(filename):
     """Check if file extension is allowed"""

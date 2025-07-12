@@ -1,13 +1,10 @@
 services:
   - type: web
-    name: genai-healthcare
+    name: genbot
     env: python
-    runtime: python3.12  # 👈 Important!
     plan: free
     buildCommand: "pip install -r requirements.txt"
     startCommand: "gunicorn app:app"
     envVars:
-      - key: FLASK_ENV
-        value: production
       - key: GROQ_API_KEY
-        sync: false  # Set this in Render dashboard for safety
+        value: your-api-key-here
