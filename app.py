@@ -6,7 +6,8 @@ from werkzeug.utils import secure_filename
 import os
 from utils import extract_text, chunk_text, embed_chunks, search_top_chunks, ask_groq_llm
 
-app = Flask(__name__)
+#app = Flask(__name__)
+app = Flask(__name__, static_folder='static', static_url_path='/static')
 app.secret_key = 'your-secret-key-here'  # Required for flash messages
 
 # Configuration
@@ -161,5 +162,5 @@ def test_result():
 
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    app.run(debug=False, host='0.0.0.0', port=port)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)
