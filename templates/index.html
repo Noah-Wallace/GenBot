@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GenAI Healthcare Assistant</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='styles.css') }}"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div class="container">
+      <!-- Dark mode toggle -->
+      <button id="toggleMode" class="toggle-mode">🌙</button>
+
+      <!-- Header -->
+      <div class="header">
+        <h1>🧠 GenAI Healthcare Assistant</h1>
+        <p class="subtitle">
+          Upload a medical research paper and get instant AI-powered insights
+        </p>
+      </div>
+
+      <!-- Main form -->
+      <form
+        id="mainForm"
+        action="/"
+        method="POST"
+        enctype="multipart/form-data"
+      >
+        <div class="form-group">
+          <label for="pdf"> 📄 Upload PDF Research Paper </label>
+          <div class="file-input-wrapper">
+            <input type="file" id="pdf" name="pdf" multiple required />
+
+            <label for="pdf" class="file-input-label" id="fileLabel">
+              <span>📁 Choose PDF file</span>
+              <span class="file-info">No file selected</span>
+            </label>
+          </div>
+          <div class="progress-container hidden" id="progressContainer">
+            <progress id="progressBar" value="0" max="100"></progress>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="question"> ❓ Ask Your Question </label>
+          <input
+            type="text"
+            id="question"
+            name="question"
+            placeholder="e.g., What are the key findings about AI in healthcare diagnosis?"
+            required
+          />
+
+          {% with messages = get_flashed_messages(with_categories=true) %} {% if
+          messages %}
+          <div class="flash-messages">
+            {% for category, message in messages %}
+            <div class="flash flash-{{ category }}">{{ message }}</div>
+            {% endfor %}
+          </div>
+          {% endif %} {% endwith %}
+        </div>
+
+        <button type="submit" class="btn">🔍 Get AI-Powered Answer</button>
+      </form>
+
+      <!-- Loading spinner -->
+      <div id="loader" class="loader hidden"></div>
+    </div>
+
+    <script>
+      // DOM elements
+      const form = document.getElementById("mainForm");
+      const fileInput = document.getElementById("pdf");
+      const fileLabel = document.getElementById("fileLabel");
+      const progressContainer = document.getElementById("progressContainer");
+      const progressBar = document.getElementById("progressBar");
+      const loader = document.getElementById("loader");
+      const toggleButton = document.getElementById("toggleMode");
+
+      // File input handling
+      fileInput.addEventListener("change", function (e) {
+        const files = Array.from(e.target.files);
+        if (files.length > 0) {
+          fileLabel.classList.add("file-selected");
+          fileLabel.innerHTML = files
+            .map(
+              (file) =>
+                `<span>📄 ${file.name}</span>
+       <span class="file-info">${(file.size / 1024 / 1024).toFixed(
+         2
+       )} MB</span>`
+            )
+            .join("<br>");
+          progressContainer.classList.remove("hidden");
+          simulateProgress();
+        }
+      });
+
+      // Progress simulation
+      function simulateProgress() {
+        let progress = 0;
+        const interval = setInterval(() => {
+          if (progress >= 100) {
+            clearInterval(interval);
+            setTimeout(() => {
+              progressContainer.classList.add("hidden");
+              progressBar.value = 0;
+            }, 500);
+          } else {
+            progress += Math.random() * 15 + 5;
+            progressBar.value = Math.min(progress, 100);
+          }
+        }, 200);
+      }
+
+      // Form submission
+      form.addEventListener("submit", function (e) {
+        const submitButton = form.querySelector(".btn");
+        submitButton.textContent = "🔄 Processing...";
+        submitButton.disabled = true;
+        loader.classList.remove("hidden");
+      });
+
+      // Dark mode toggle
+      toggleButton.addEventListener("click", function () {
+        document.body.classList.toggle("dark-mode");
+        document.querySelector(".container").classList.toggle("dark-mode");
+
+        // Update toggle button text
+        const isDarkMode = document.body.classList.contains("dark-mode");
+        toggleButton.textContent = isDarkMode ? "☀️" : "🌙";
+
+        // Save preference
+        localStorage.setItem("darkMode", isDarkMode);
+      });
+
+      // Load saved dark mode preference
+      window.addEventListener("load", function () {
+        const savedDarkMode = localStorage.getItem("darkMode") === "true";
+        if (savedDarkMode) {
+          document.body.classList.add("dark-mode");
+          document.querySelector(".container").classList.add("dark-mode");
+          toggleButton.textContent = "☀️";
+        }
+      });
+
+      // Enhanced drag and drop
+      const container = document.querySelector(".container");
+
+      ["dragenter", "dragover", "dragleave", "drop"].forEach((eventName) => {
+        container.addEventListener(eventName, preventDefaults, false);
+      });
+
+      function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+
+      ["dragenter", "dragover"].forEach((eventName) => {
+        container.addEventListener(eventName, highlight, false);
+      });
+
+      ["dragleave", "drop"].forEach((eventName) => {
+        container.addEventListener(eventName, unhighlight, false);
+      });
+
+      function highlight(e) {
+        container.classList.add("drag-over");
+      }
+
+      function unhighlight(e) {
+        container.classList.remove("drag-over");
+      }
+
+      container.addEventListener("drop", handleDrop, false);
+
+      function handleDrop(e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+
+        if (files.length > 0 && files[0].type === "application/pdf") {
+          fileInput.files = files;
+          fileInput.dispatchEvent(new Event("change"));
+        }
+      }
+
+      // Add smooth scrolling for better UX
+      document.documentElement.style.scrollBehavior = "smooth";
+    </script>
+
+    <style>
+      .drag-over {
+        background: linear-gradient(
+          135deg,
+          rgba(181, 181, 169, 0.1) 0%,
+          rgba(163, 163, 153, 0.1) 100%
+        );
+        transform: scale(1.02);
+        transition: all 0.3s ease;
+      }
+
+      .file-input-label .file-info {
+        font-size: 0.9rem;
+        opacity: 0.8;
+      }
+
+      .btn:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+        transform: none !important;
+      }
+    </style>
+  </body>
+</html>

@@ -1,0 +1,7 @@
+Flask
+numpy
+Werkzeug
+python-docx
+PyMuPDF
+groq     
+gunicorn==21.2.0

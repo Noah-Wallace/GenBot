@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GenAI Healthcare Assistant - Results</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='styles.css') }}"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div class="results-container">
+      <!-- Dark mode toggle -->
+      <button id="toggleMode" class="toggle-mode">🌙</button>
+
+      <!-- Header -->
+      <div class="header">
+        <h1>🧠 GenAI Healthcare Assistant</h1>
+        <p class="subtitle">AI-Powered Research Analysis Results</p>
+      </div>
+
+      <!-- Question Section -->
+      <div class="question-section">
+        <h3>🔍 Your Question</h3>
+        <p>{{ question }}</p>
+      </div>
+
+      <!-- AI Answer Section -->
+      <div class="answer-section">
+        <h3>🤖 AI-Generated Answer</h3>
+
+        {% if processed_files %}
+        <div class="files-section">
+          <h3>📁 Uploaded Files ({{ total_files }})</h3>
+          <ul>
+            {% for file in processed_files %}
+            <li>{{ file }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+        <p>{{ answer }}</p>
+      </div>
+
+      <!-- Context Chunks Section -->
+      <div class="chunks-section">
+        <h3>📚 Relevant Context from Document</h3>
+        <p style="color: #7a7a7a; margin-bottom: 20px; font-style: italic">
+          The following excerpts were identified as most relevant to your
+          question:
+        </p>
+        {% for chunk in top_chunks %}
+        <div class="chunk">
+          <div class="chunk-header">
+            <span class="chunk-number">Excerpt {{ loop.index }}</span>
+            <span class="chunk-relevance">Relevance: High</span>
+          </div>
+          <div class="chunk-content">{{ chunk }}</div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Action buttons -->
+      <div class="action-buttons">
+        <a href="/" class="back-button"> 🔙 Ask Another Question </a>
+        <button onclick="window.print()" class="btn print-button">
+          🖨️ Print Results
+        </button>
+        <button onclick="copyResults()" class="btn copy-button">
+          📋 Copy Answer
+        </button>
+      </div>
+    </div>
+
+    <script>
+      // Dark mode toggle functionality
+      const toggleButton = document.getElementById("toggleMode");
+
+      toggleButton.addEventListener("click", function () {
+        document.body.classList.toggle("dark-mode");
+        document
+          .querySelector(".results-container")
+          .classList.toggle("dark-mode");
+
+        // Update toggle button text
+        const isDarkMode = document.body.classList.contains("dark-mode");
+        toggleButton.textContent = isDarkMode ? "☀️" : "🌙";
+
+        // Save preference
+        localStorage.setItem("darkMode", isDarkMode);
+      });
+
+      // Load saved dark mode preference
+      window.addEventListener("load", function () {
+        const savedDarkMode = localStorage.getItem("darkMode") === "true";
+        if (savedDarkMode) {
+          document.body.classList.add("dark-mode");
+          document
+            .querySelector(".results-container")
+            .classList.add("dark-mode");
+          toggleButton.textContent = "☀️";
+        }
+      });
+
+      // Copy results to clipboard
+      function copyResults() {
+        const question = document.querySelector(
+          ".question-section p"
+        ).textContent;
+        const answer = document.querySelector(".answer-section p").textContent;
+
+        const fullText = `Question: ${question}\n\nAnswer: ${answer}`;
+
+        navigator.clipboard
+          .writeText(fullText)
+          .then(function () {
+            // Show success feedback
+            const copyButton = document.querySelector(".copy-button");
+            const originalText = copyButton.textContent;
+            copyButton.textContent = "✅ Copied!";
+            copyButton.style.background =
+              "linear-gradient(135deg, #28a745 0%, #20c997 100%)";
+
+            setTimeout(() => {
+              copyButton.textContent = originalText;
+              copyButton.style.background = "";
+            }, 2000);
+          })
+          .catch(function (err) {
+            console.error("Could not copy text: ", err);
+            alert("Failed to copy to clipboard");
+          });
+      }
+
+      // Add smooth scrolling
+      document.documentElement.style.scrollBehavior = "smooth";
+
+      // Add animation on load
+      window.addEventListener("load", function () {
+        const sections = document.querySelectorAll(
+          ".question-section, .answer-section, .chunks-section"
+        );
+        sections.forEach((section, index) => {
+          section.style.opacity = "0";
+          section.style.transform = "translateY(20px)";
+
+          setTimeout(() => {
+            section.style.transition = "all 0.6s ease";
+            section.style.opacity = "1";
+            section.style.transform = "translateY(0)";
+          }, index * 200);
+        });
+      });
+
+      // Chunk expansion/collapse functionality
+      document.querySelectorAll(".chunk").forEach((chunk) => {
+        chunk.addEventListener("click", function () {
+          this.classList.toggle("expanded");
+        });
+      });
+    </script>
+
+    <style>
+      .results-container {
+        background: linear-gradient(135deg, #fffff7 0%, #fbfbeb 100%);
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .chunk {
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        max-height: 150px;
+      }
+
+      .chunk.expanded {
+        max-height: none;
+      }
+
+      .chunk-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #e2e2d4;
+      }
+
+      .chunk-number {
+        font-weight: 600;
+        color: #a3a396;
+        font-size: 0.9rem;
+      }
+
+      .chunk-relevance {
+        font-size: 0.8rem;
+        background: linear-gradient(135deg, #b5b5a9 0%, #a3a396 100%);
+        color: #fffff7;
+        padding: 3px 8px;
+        border-radius: 12px;
+        font-weight: 500;
+      }
+
+      .chunk-content {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        line-height: 1.6;
+      }
+
+      .chunk::after {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 30px;
+        background: linear-gradient(transparent, #fffff7);
+        pointer-events: none;
+      }
+
+      .chunk.expanded::after {
+        display: none;
+      }
+
+      .action-buttons {
+        display: flex;
+        gap: 15px;
+        margin-top: 40px;
+        flex-wrap: wrap;
+      }
+
+      .print-button,
+      .copy-button {
+        background: linear-gradient(135deg, #c9c9bc 0%, #b5b5a9 100%);
+        padding: 12px 20px;
+        font-size: 1rem;
+      }
+
+      .print-button:hover,
+      .copy-button:hover {
+        background: linear-gradient(135deg, #b5b5a9 0%, #a3a396 100%);
+      }
+
+      /* Dark mode styles for results */
+      body.dark-mode .results-container {
+        background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+      }
+
+      .dark-mode .chunk-header {
+        border-bottom-color: #4a4a4a;
+      }
+
+      .dark-mode .chunk::after {
+        background: linear-gradient(transparent, #333333);
+      }
+
+      /* Print styles */
+      @media print {
+        .toggle-mode,
+        .action-buttons {
+          display: none !important;
+        }
+
+        .container,
+        .results-container {
+          box-shadow: none !important;
+          background: white !important;
+        }
+
+        .chunk {
+          max-height: none !important;
+          break-inside: avoid;
+        }
+
+        .chunk::after {
+          display: none !important;
+        }
+      }
+
+      /* Mobile responsive */
+      @media (max-width: 768px) {
+        .action-buttons {
+          flex-direction: column;
+        }
+
+        .chunk-header {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 5px;
+        }
+      }
+    </style>
+  </body>
+</html>
