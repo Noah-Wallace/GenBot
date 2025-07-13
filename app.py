@@ -164,6 +164,5 @@ def test_result():
     return render_template("result.html", question="What is AI?", answer="AI is artificial intelligence.", top_chunks=["Chunk 1", "Chunk 2"])
 
 
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
