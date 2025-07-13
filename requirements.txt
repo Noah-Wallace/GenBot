@@ -1,10 +1,21 @@
-Flask==3.0.3
-numpy
-Werkzeug==3.0.4
-python-docx
-PyMuPDF
-groq
-sentence-transformers
-faiss-cpu
-python-dotenv
-gunicorn
+# Core web framework
+Flask==3.1.1
+
+# Production server
+gunicorn==21.2.0
+
+# PDF parsing & docx support
+PyMuPDF==1.26.3
+python-docx==1.2.0
+
+# Embeddings & vector search
+sentence-transformers==5.0.0
+faiss-cpu==1.7.4          # last stable CPU wheel for Py3.12
+
+# Groq LLM client
+groq==0.30.0
+
+# Utilities
+numpy==2.3.1
+python-dotenv==1.1.1
+httpx==0.28.1
