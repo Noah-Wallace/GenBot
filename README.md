@@ -47,7 +47,7 @@
 
 * ✅ Upload and parse **multiple PDFs** (supports `.pdf`, `.docx`, `.txt`)
 * 🧠 Ask **natural language** questions
-* 🔍 Semantic search via **FAISS + Sentence Transformers**
+* 🔍 Semantic search via **ChromaDB + Sentence Transformers**
 * 🤖 Response generation using **Groq's GPT-4 class model**
 * 🌙 Clean, dark-mode enabled frontend with smooth animations
 * 🧾 Print answers or 📋 copy with one click
@@ -61,7 +61,7 @@
 | -------------- | ------------------------------------------------- |
 | 👩‍🎨 Frontend | HTML5, CSS3, Vanilla JS, Google Fonts, Coolors    |
 | 🧠 LLM Backend | Groq API (OpenAI-compatible), Flask               |
-| 🔎 Search      | FAISS, `sentence-transformers` (all-MiniLM-L6-v2) |
+| 🔎 Search      | ChromaDB, `sentence-transformers` (all-MiniLM-L6-v2) |
 | 📄 Parsing     | PyMuPDF (fitz), python-docx                       |
 | ☁️ Deployment  | Render.com                                        |
 
@@ -103,7 +103,7 @@ GenAI-Healthcare/
 1. User uploads multiple research papers (PDFs, docs)
 2. Backend extracts text using PyMuPDF/docx parser
 3. Chunks are created and embedded using `all-MiniLM-L6-v2`
-4. FAISS finds most relevant text chunks
+4. ChromaDB finds most relevant text chunks
 5. Context + question are passed to Groq’s GPT model
 6. Answer is rendered on a clean, interactive UI
 
