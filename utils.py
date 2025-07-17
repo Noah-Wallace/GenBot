@@ -4,15 +4,22 @@ import chromadb
 import openai
 from dotenv import load_dotenv
 from sentence_transformers import SentenceTransformer
+import tempfile
 
 # 🔐 Load environment variables (e.g., GROQ_API_KEY from .env file)
 load_dotenv()
 openai.api_key = os.getenv("GROQ_API_KEY")
 openai.api_base = "https://api.groq.com/openai/v1"  # ✅ Groq endpoint (OpenAI compatible)
 
-# 🧠 Initialize ChromaDB client (in-memory for simplicity)
-chroma_client = chromadb.Client()
-collection = chroma_client.create_collection(name="research_chunks")
+# 🧠 Initialize ChromaDB client with persistent storage for production
+PERSISTENT_DIR = os.path.join(tempfile.gettempdir(), "chroma_db")
+os.makedirs(PERSISTENT_DIR, exist_ok=True)
+
+chroma_client = chromadb.PersistentClient(path=PERSISTENT_DIR)
+try:
+    collection = chroma_client.get_collection(name="research_chunks")
+except ValueError:
+    collection = chroma_client.create_collection(name="research_chunks")
 
 # 🧠 Load embedding model once (local from Hugging Face)
 model = SentenceTransformer('all-MiniLM-L6-v2')
@@ -37,12 +44,16 @@ def chunk_text(text, chunk_size=300, overlap=50):
 # 🔎 Use ChromaDB to find top-k most similar chunks to the query
 def search_top_chunks(query, chunks, embeddings=None, k=3):
     # Note: embeddings parameter kept for backward compatibility but not used
-    results = collection.query(
-        query_texts=[query],
-        n_results=k
-    )
-    # Get the matching chunks using the returned indices
-    return [chunks[int(doc_id.split('_')[1])] for doc_id in results['ids'][0]]
+    try:
+        results = collection.query(
+            query_texts=[query],
+            n_results=min(k, len(chunks))  # Ensure k doesn't exceed available chunks
+        )
+        return [chunks[int(doc_id.split('_')[1])] for doc_id in results['ids'][0]]
+    except Exception as e:
+        print(f"Search error: {e}")
+        # Fallback to returning first k chunks if search fails
+        return chunks[:min(k, len(chunks))]
 
 # 🤖 Call Groq's LLM to answer using the retrieved context
 def ask_groq_llm(context, question):
