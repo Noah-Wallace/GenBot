@@ -3,21 +3,21 @@ name: Deploy to Hugging Face Space
 on:
   push:
     branches:
-      - main  # Runs whenever you push to the main branch
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout GitHub repo
+      - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Sync to Hugging Face Space
+      - name: Push to Hugging Face Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           git config --global user.email "noahwallace9044@gmail.com"
-          git config --global user.name "Noah-Wallace"
+          git config --global user.name "Noah-"
           git clone https://huggingface.co/spaces/noahwallace/GenBot hf-space
           rsync -av --exclude='.git' ./ hf-space/
           cd hf-space
