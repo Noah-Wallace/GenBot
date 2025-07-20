@@ -4,7 +4,14 @@ import gradio as gr
 import numpy as np
 import os
 from typing import List, Tuple, Optional
+from huggingface_hub import InferenceClient
 from utils import extract_text, chunk_text, embed_chunks, search_top_chunks, ask_groq_llm
+
+# Initialize Hugging Face client
+client = InferenceClient(
+    model="HuggingFaceH4/zephyr-7b-beta",
+    token=os.environ.get("HF_API_TOKEN")  # Uses the secret token from HF Space
+)
 
 # Configuration
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
