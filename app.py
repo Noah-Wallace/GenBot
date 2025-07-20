@@ -148,93 +148,109 @@ class DocumentProcessor:
 def create_interface():
     """Create and return the Gradio interface"""
     
+    css_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "styles.css")
+    with open(css_path, 'r') as f:
+        custom_css = f.read()
+    
     with gr.Blocks(
-        title="📚 Document Q&A with RAG",
-        theme=gr.themes.Soft(),
-        css="""
-        .gradio-container {
-            max-width: 1200px !important;
-            margin: auto !important;
-        }
-        .upload-area {
-            border: 2px dashed #ccc;
-            border-radius: 10px;
-            padding: 20px;
-            text-align: center;
-            margin: 10px 0;
-        }
-        """
+        title="📚 Document Q&A Assistant",
+        theme=gr.themes.Soft(
+            primary_hue="blue",
+            secondary_hue="slate",
+            neutral_hue="slate",
+            font=("Inter", "system-ui", "sans-serif")
+        ),
+        css=custom_css
     ) as demo:
         
-        gr.Markdown("""
-        # 📚 Document Q&A with RAG
-        
-        Upload your research documents (PDF, TXT, DOCX, DOC) and ask questions about their content. 
-        The system uses **Retrieval-Augmented Generation (RAG)** to find relevant information and provide accurate answers with source excerpts.
-        
-        **Features:**
-        - 📎 Multiple file upload support
-        - 🔍 Semantic search through documents
-        - 📝 Context-aware answers with excerpts
-        - 🎯 Source attribution and relevance scoring
-        
-        **Supported formats:** PDF, TXT, DOCX, DOC (max 50MB per file)
-        """)
+        with gr.Box(elem_classes="header-box"):
+            gr.Markdown("""
+            # 🤖 GenBot - Intelligent Document Assistant
+            
+            Upload your documents and get AI-powered insights. Ask questions about your PDFs, documents, 
+            and research papers to get accurate, context-aware answers with source references.
+            
+            #### 🚀 Capabilities
+            - **Multi-Document Analysis**: Process multiple files simultaneously
+            - **Smart Search**: Uses advanced AI to find relevant information
+            - **Context-Aware**: Provides answers with source references
+            - **Research-Grade**: Perfect for academic and professional use
+            
+            #### 📄 Supported Formats
+            `PDF` • `DOCX` • `DOC` • `TXT` (Max: 50MB per file)
+            """)
         
         with gr.Row():
             with gr.Column(scale=1):
-                # File upload section
-                gr.Markdown("### 📎 Upload Documents")
-                files_input = gr.File(
-                    label="Choose files to upload",
-                    file_count="multiple",
-                    file_types=[".pdf", ".txt", ".docx", ".doc"],
-                    height=150
-                )
+                with gr.Box(elem_classes="upload-box"):
+                    gr.Markdown("### 📎 Upload Your Documents")
+                    files_input = gr.File(
+                        label="Drop files here or click to browse",
+                        file_count="multiple",
+                        file_types=[".pdf", ".txt", ".docx", ".doc"],
+                        height=200,
+                        elem_classes="file-upload"
+                    )
+                    gr.Markdown("*Supports: PDF, DOCX, DOC, TXT (Max 50MB per file)*", elem_classes="file-info")
                 
-                # Question input section
-                gr.Markdown("### ❓ Ask Your Question")
-                question_input = gr.Textbox(
-                    label="Enter your question",
-                    placeholder="What would you like to know about the uploaded documents?",
-                    lines=4,
-                    max_lines=6
-                )
-                
-                # Submit button
-                submit_btn = gr.Button(
-                    "🔍 Get Answer",
-                    variant="primary",
-                    size="lg",
-                    scale=1
-                )
-                
-                # Clear button
-                clear_btn = gr.Button(
-                    "🗑️ Clear All",
-                    variant="secondary",
-                    size="sm"
-                )
-                
-            with gr.Column(scale=2):
-                # Answer output
-                gr.Markdown("### 💡 Answer")
-                answer_output = gr.Markdown(
-                    value="📋 **Ready to help!** Upload documents and ask a question to get started.",
-                    height=400,
-                    show_label=False
-                )
-                
-        # Sources and errors in expandable sections
-        with gr.Row():
-            with gr.Column():
-                with gr.Accordion("📚 Sources & Context", open=False) as sources_accordion:
-                    sources_output = gr.Markdown(
-                        value="Source information will appear here after processing."
+                with gr.Box(elem_classes="question-box"):
+                    gr.Markdown("### ❓ Ask Your Question")
+                    question_input = gr.Textbox(
+                        label="What would you like to know?",
+                        placeholder="Enter your question about the documents...",
+                        lines=4,
+                        max_lines=8,
+                        elem_classes="question-input"
                     )
                 
-                with gr.Accordion("⚠️ Warnings & Errors", open=False, visible=False) as errors_accordion:
-                    error_output = gr.Markdown()
+                with gr.Row():
+                    submit_btn = gr.Button(
+                        "🔍 Get Answer",
+                        elem_classes=["primary-button", "submit-btn"],
+                        scale=3
+                    )
+                    clear_btn = gr.Button(
+                        "🗑️ Clear",
+                        elem_classes="clear-btn",
+                        scale=1
+                    )
+                
+            with gr.Column(scale=2):
+                with gr.Box(elem_classes="answer-box"):
+                    gr.Markdown("### 💡 AI Response")
+                    answer_output = gr.Markdown(
+                        value=(
+                            "### � Welcome to GenBot!\n\n"
+                            "I'm ready to help you analyze your documents. To get started:\n\n"
+                            "1. 📎 Upload one or more documents using the panel on the left\n"
+                            "2. ❓ Type your question in the text box\n"
+                            "3. 🔍 Click 'Get Answer' or press Enter\n\n"
+                            "*I'll provide detailed answers with source references!*"
+                        ),
+                        elem_classes="answer-content"
+                    )
+                
+                # Sources accordion
+                with gr.Accordion(
+                    "📚 Sources & References",
+                    open=False,
+                    elem_classes="source-accordion"
+                ) as sources_accordion:
+                    sources_output = gr.Markdown(
+                        value="Source references will appear here after processing your question.",
+                        elem_classes="source-content"
+                    )
+                
+                # Errors and warnings
+                with gr.Accordion(
+                    "⚠️ Processing Log",
+                    open=False,
+                    visible=False,
+                    elem_classes="error-accordion"
+                ) as errors_accordion:
+                    error_output = gr.Markdown(
+                        elem_classes="error-content"
+                    )
         
         # Handle form submission
         def process_and_display(files, question):
