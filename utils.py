@@ -9,10 +9,12 @@ import tempfile
 # 🔐 Load environment variables (e.g., GROQ_API_KEY from .env file)
 load_dotenv()
 openai.api_key = os.getenv("GROQ_API_KEY")
+if not openai.api_key:
+    raise ValueError("GROQ_API_KEY environment variable is not set. Please set it in your Hugging Face Space settings.")
 openai.api_base = "https://api.groq.com/openai/v1"  # ✅ Groq endpoint (OpenAI compatible)
 
 # 🧠 Initialize ChromaDB client with persistent storage for production
-PERSISTENT_DIR = os.path.join(tempfile.gettempdir(), "chroma_db")
+PERSISTENT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "chroma_db")
 os.makedirs(PERSISTENT_DIR, exist_ok=True)
 
 # Initialize global variables
