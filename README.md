@@ -1,3 +1,14 @@
+---
+title: GenBot - Document Q&A Assistant
+emoji: 🤖
+colorFrom: blue
+colorTo: green
+sdk: gradio
+sdk_version: 5.0.1
+app_file: app.py
+pinned: false
+---
+
 # 🧠 GenAI Research Assistant
 
 > ⚕️ An intelligent, full-stack PDF research assistant that lets you query multiple research papers using natural language and get precise, context-aware answers powered by LLMs.

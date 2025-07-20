@@ -1,7 +1,9 @@
+#utils.py
 import os
 import fitz  # PyMuPDF
 import chromadb
 import openai
+import numpy as np
 from dotenv import load_dotenv
 from sentence_transformers import SentenceTransformer
 import tempfile
@@ -49,37 +51,65 @@ def extract_text(pdf_file):
 
 # 📚 Break long text into overlapping chunks
 def chunk_text(text, chunk_size=300, overlap=50):
-    if not model or not collection:
-        if not initialize_services():
-            raise RuntimeError("Failed to initialize services")
-            
     words = text.split()
-    chunks = [" ".join(words[i:i+chunk_size]) for i in range(0, len(words), chunk_size - overlap)]
+    chunks = []
     
-    try:
-        # Add chunks to ChromaDB collection with unique IDs
-        collection.add(
-            documents=chunks,
-            ids=[f"chunk_{i}" for i in range(len(chunks))],
-            embeddings=model.encode(chunks).tolist()
-        )
-    except Exception as e:
-        print(f"Warning: Failed to add chunks to ChromaDB: {e}")
+    for i in range(0, len(words), chunk_size - overlap):
+        chunk = " ".join(words[i:i+chunk_size])
+        if chunk.strip():  # Only add non-empty chunks
+            chunks.append(chunk)
     
     return chunks
 
-# 🔎 Use ChromaDB to find top-k most similar chunks to the query
-def search_top_chunks(query, chunks, embeddings=None, k=3):
-    if not model or not collection:
+# 🧮 Create embeddings for text chunks
+def embed_chunks(chunks):
+    if not model:
+        if not initialize_services():
+            raise RuntimeError("Failed to initialize services")
+    
+    try:
+        # Generate embeddings for all chunks
+        embeddings = model.encode(chunks)
+        
+        # Store chunks and embeddings in ChromaDB
+        if collection:
+            try:
+                # Add chunks to ChromaDB collection with unique IDs
+                collection.add(
+                    documents=chunks,
+                    ids=[f"chunk_{i}" for i in range(len(chunks))],
+                    embeddings=embeddings.tolist()
+                )
+            except Exception as e:
+                print(f"Warning: Failed to add chunks to ChromaDB: {e}")
+        
+        return embeddings
+    except Exception as e:
+        print(f"Error generating embeddings: {e}")
+        return None
+
+# 🔎 Find most relevant chunks using embeddings similarity
+def search_top_chunks(query, chunks, embeddings, k=3):
+    if not model:
         if not initialize_services():
             return chunks[:min(k, len(chunks))]  # Fallback to simple slicing
-            
+    
     try:
-        results = collection.query(
-            query_texts=[query],
-            n_results=min(k, len(chunks))
-        )
-        return [chunks[int(doc_id.split('_')[1])] for doc_id in results['ids'][0]]
+        # Get query embedding
+        query_embedding = model.encode([query])[0]
+        
+        # Calculate cosine similarity between query and all chunks
+        from numpy.linalg import norm
+        similarities = []
+        for chunk_embedding in embeddings:
+            similarity = np.dot(query_embedding, chunk_embedding) / (norm(query_embedding) * norm(chunk_embedding))
+            similarities.append(similarity)
+        
+        # Get indices of top k most similar chunks
+        top_indices = np.argsort(similarities)[-k:][::-1]
+        
+        # Return the corresponding chunks
+        return [chunks[i] for i in top_indices]
     except Exception as e:
         print(f"Search error: {e}")
         return chunks[:min(k, len(chunks))]  # Fallback to simple slicing

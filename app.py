@@ -1,6 +1,7 @@
 # app.py - RAG Document Q&A Chatbot
 
 import gradio as gr
+
 import numpy as np
 import os
 from typing import List, Tuple, Optional
@@ -170,7 +171,7 @@ def create_interface():
         css=custom_css
     ) as demo:
         
-        with gr.Box(elem_classes="header-box"):
+        with gr.Group(elem_classes="header-box"):
             gr.Markdown("""
             # 🤖 GenBot - Intelligent Document Assistant
             
@@ -189,7 +190,7 @@ def create_interface():
         
         with gr.Row():
             with gr.Column(scale=1):
-                with gr.Box(elem_classes="upload-box"):
+                with gr.Group(elem_classes="upload-box"):
                     gr.Markdown("### 📎 Upload Your Documents")
                     files_input = gr.File(
                         label="Drop files here or click to browse",
@@ -200,7 +201,7 @@ def create_interface():
                     )
                     gr.Markdown("*Supports: PDF, DOCX, DOC, TXT (Max 50MB per file)*", elem_classes="file-info")
                 
-                with gr.Box(elem_classes="question-box"):
+                with gr.Group(elem_classes="question-box"):
                     gr.Markdown("### ❓ Ask Your Question")
                     question_input = gr.Textbox(
                         label="What would you like to know?",
@@ -223,7 +224,7 @@ def create_interface():
                     )
                 
             with gr.Column(scale=2):
-                with gr.Box(elem_classes="answer-box"):
+                with gr.Group(elem_classes="answer-box"):
                     gr.Markdown("### 💡 AI Response")
                     answer_output = gr.Markdown(
                         value=(
