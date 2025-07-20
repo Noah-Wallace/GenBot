@@ -1,4 +1,4 @@
-# 🧠 GenAI Healthcare Research Assistant
+# 🧠 GenAI Research Assistant
 
 > ⚕️ An intelligent, full-stack PDF research assistant that lets you query multiple research papers using natural language and get precise, context-aware answers powered by LLMs.
 
