@@ -1,7 +1,6 @@
 # app.py - RAG Document Q&A Chatbot
 
 import gradio as gr
-
 import numpy as np
 import os
 from typing import List, Tuple, Optional
@@ -156,9 +155,21 @@ class DocumentProcessor:
 def create_interface():
     """Create and return the Gradio interface"""
     
-    css_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "styles.css")
-    with open(css_path, 'r') as f:
-        custom_css = f.read()
+    # Handle CSS file loading with error checking
+    custom_css = ""
+    try:
+        css_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "styles.css")
+        if os.path.exists(css_path):
+            with open(css_path, 'r') as f:
+                custom_css = f.read()
+    except Exception as e:
+        print(f"Warning: Could not load CSS file: {e}")
+        # Provide basic CSS as fallback
+        custom_css = """
+        .header-box { margin-bottom: 20px; }
+        .upload-box, .question-box, .answer-box { margin: 10px 0; }
+        .primary-button { background-color: #007bff; color: white; }
+        """
     
     with gr.Blocks(
         title="📚 Document Q&A Assistant",
@@ -228,7 +239,7 @@ def create_interface():
                     gr.Markdown("### 💡 AI Response")
                     answer_output = gr.Markdown(
                         value=(
-                            "### � Welcome to GenBot!\n\n"
+                            "### 👋 Welcome to GenBot!\n\n"
                             "I'm ready to help you analyze your documents. To get started:\n\n"
                             "1. 📎 Upload one or more documents using the panel on the left\n"
                             "2. ❓ Type your question in the text box\n"
@@ -358,12 +369,18 @@ def create_interface():
 
 
 if __name__ == "__main__":
-    # Create and launch the interface
-    demo = create_interface()
-    demo.launch(
-        server_name="0.0.0.0",
-        server_port=7860,
-        share=True,
-        show_error=True,
-        show_tips=True
-    )
+    try:
+        # Create and launch the interface
+        demo = create_interface()
+        demo.launch(
+            server_name="0.0.0.0",
+            server_port=7860,
+            share=True,
+            show_error=True
+            # Removed show_tips parameter as it doesn't exist
+        )
+    except Exception as e:
+        print(f"Error launching app: {e}")
+        # Fallback launch with minimal parameters
+        demo = create_interface()
+        demo.launch()
