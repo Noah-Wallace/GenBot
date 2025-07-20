@@ -1,168 +1,280 @@
-# app.py
+# app.py - Gradio Version of RAG Document Q&A
 
-from flask import Flask, render_template, request, flash, redirect, url_for
+import gradio as gr
 import numpy as np
-from werkzeug.utils import secure_filename
 import os
+from typing import List, Tuple, Optional
 from utils import extract_text, chunk_text, embed_chunks, search_top_chunks, ask_groq_llm
 
-app = Flask(__name__)
-#app = Flask(__name__, static_folder='static', static_url_path='/static')
-app.secret_key = 'your-secret-key-here'  # Required for flash messages
-
 # Configuration
-app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB
-app.config['UPLOAD_FOLDER'] = 'uploads'
+MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
 ALLOWED_EXTENSIONS = {'pdf', 'txt', 'docx', 'doc'}
 
-# Ensure upload directory exists
-#os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-upload_folder = 'uploads'
-if not os.path.exists(upload_folder):
-    os.makedirs(upload_folder)
-
-def allowed_file(filename):
-    """Check if file extension is allowed"""
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-def validate_files(files):
-    """Validate uploaded files"""
-    if not files or all(f.filename == '' for f in files):
-        return False, "No files selected"
+def validate_file(file_path: str) -> Tuple[bool, str]:
+    """Validate uploaded file"""
+    if not file_path:
+        return False, "No file provided"
     
-    for file in files:
-        if file.filename == '':
-            continue
-        if not allowed_file(file.filename):
-            return False, f"File type not allowed: {file.filename}"
+    # Check file size
+    if os.path.getsize(file_path) > MAX_FILE_SIZE:
+        return False, "File is too large (max 50MB)"
     
-    return True, "Files are valid"
+    # Check file extension
+    extension = file_path.split('.')[-1].lower()
+    if extension not in ALLOWED_EXTENSIONS:
+        return False, f"File type '.{extension}' not supported. Allowed: {', '.join(ALLOWED_EXTENSIONS)}"
+    
+    return True, "File is valid"
 
-@app.route('/', methods=['GET', 'POST'])
-def index():
-    if request.method == 'POST':
-        try:
-            # Get question first
-            question = request.form.get('question', '').strip()
-            if not question:
-                flash('Please enter a question', 'error')
-                return redirect(url_for('index'))
-            
-            # Get uploaded files
-            files = request.files.getlist('pdf')  # Consider renaming to 'files' for clarity
-            
-            # Validate files
-            is_valid, message = validate_files(files)
-            if not is_valid:
-                flash(message, 'error')
-                return redirect(url_for('index'))
-            
-            # Process files
-            all_text = ""
-            processed_files = []
-            
-            for file in files:
-                if file.filename == '':
-                    continue
-                    
-                try:
-                    # Secure the filename
-                    filename = secure_filename(file.filename)
-                    
-                    # Extract text from file
-                    text = extract_text(file)
-                    
-                    if text.strip():  # Only add non-empty text
-                        all_text += f"\n\n--- Content from {filename} ---\n\n"
-                        all_text += text
-                        processed_files.append(filename)
-                    else:
-                        flash(f'No text could be extracted from {filename}', 'warning')
-                        
-                except Exception as e:
-                    flash(f'Error processing {file.filename}: {str(e)}', 'error')
-                    continue
-            
-            # Check if we have any text to process
-            if not all_text.strip():
-                flash('No text could be extracted from any of the uploaded files', 'error')
-                return redirect(url_for('index'))
-            
-            # Process the combined text
+def process_documents_and_answer(files: List[str], question: str) -> Tuple[str, str, str]:
+    """
+    Process uploaded documents and answer the question
+    
+    Args:
+        files: List of file paths
+        question: User's question
+        
+    Returns:
+        Tuple of (answer, sources_info, error_message)
+    """
+    try:
+        # Validate inputs
+        if not question or not question.strip():
+            return "", "", "❌ Please enter a question"
+        
+        if not files:
+            return "", "", "❌ Please upload at least one document"
+        
+        # Process files
+        all_text = ""
+        processed_files = []
+        errors = []
+        
+        for file_path in files:
             try:
-                chunks = chunk_text(all_text)
-                if not chunks:
-                    flash('No text chunks could be created from the files', 'error')
-                    return redirect(url_for('index'))
+                # Validate file
+                is_valid, message = validate_file(file_path)
+                if not is_valid:
+                    errors.append(f"❌ {os.path.basename(file_path)}: {message}")
+                    continue
                 
-                embeddings = embed_chunks(chunks)
-                if embeddings is None or len(embeddings) == 0:
-                    flash('Failed to create embeddings from text chunks', 'error')
-                    return redirect(url_for('index'))
+                # Extract text from file
+                with open(file_path, 'rb') as f:
+                    # Create a file-like object that extract_text expects
+                    text = extract_text(f, file_path)
                 
-                # Search for relevant chunks
-                top_chunks = search_top_chunks(
-                    question, 
-                    chunks, 
-                    np.array(embeddings).astype("float32")
-                )
-                
-                if not top_chunks:
-                    flash('No relevant information found in the uploaded files', 'warning')
-                    return redirect(url_for('index'))
-                
-                # Prepare context for LLM
-                context = "\n\n".join(top_chunks)
-                
-                # Get answer from LLM
-                answer = ask_groq_llm(context, question)
-                
-                if not answer:
-                    flash('Failed to generate answer from the LLM', 'error')
-                    return redirect(url_for('index'))
-                
-                return render_template(
-                    "result.html", 
-                    question=question, 
-                    answer=answer, 
-                    top_chunks=top_chunks,
-                    processed_files=processed_files,
-                    total_files=len(processed_files)
-                )
-                
+                if text and text.strip():
+                    filename = os.path.basename(file_path)
+                    all_text += f"\n\n--- Content from {filename} ---\n\n"
+                    all_text += text
+                    processed_files.append(filename)
+                else:
+                    errors.append(f"⚠️ {os.path.basename(file_path)}: No text could be extracted")
+                    
             except Exception as e:
-                flash(f'Error processing text: {str(e)}', 'error')
-                return redirect(url_for('index'))
-                
+                errors.append(f"❌ {os.path.basename(file_path)}: {str(e)}")
+                continue
+        
+        # Check if we have any text to process
+        if not all_text.strip():
+            error_msg = "❌ No text could be extracted from any files"
+            if errors:
+                error_msg += "\n\nErrors:\n" + "\n".join(errors)
+            return "", "", error_msg
+        
+        # Process the combined text
+        try:
+            # Create chunks
+            chunks = chunk_text(all_text)
+            if not chunks:
+                return "", "", "❌ No text chunks could be created from the files"
+            
+            # Create embeddings
+            embeddings = embed_chunks(chunks)
+            if embeddings is None or len(embeddings) == 0:
+                return "", "", "❌ Failed to create embeddings from text chunks"
+            
+            # Search for relevant chunks
+            top_chunks = search_top_chunks(
+                question, 
+                chunks, 
+                np.array(embeddings).astype("float32")
+            )
+            
+            if not top_chunks:
+                return "", "", "❌ No relevant information found in the uploaded files"
+            
+            # Prepare context for LLM
+            context = "\n\n".join(top_chunks)
+            
+            # Get answer from LLM
+            answer = ask_groq_llm(context, question)
+            
+            if not answer:
+                return "", "", "❌ Failed to generate answer from the LLM"
+            
+            # Prepare sources information
+            sources_info = f"""
+**📁 Sources Used:**
+- **Files processed:** {len(processed_files)}
+- **Files:** {', '.join(processed_files)}
+- **Text chunks found:** {len(top_chunks)}
+
+**📝 Relevant excerpts:**
+"""
+            
+            for i, chunk in enumerate(top_chunks[:3], 1):  # Show top 3 chunks
+                preview = chunk[:200] + "..." if len(chunk) > 200 else chunk
+                sources_info += f"\n**Chunk {i}:**\n{preview}\n"
+            
+            # Add any errors as warnings
+            error_msg = ""
+            if errors:
+                error_msg = "⚠️ Some files had issues:\n" + "\n".join(errors)
+            
+            return answer, sources_info, error_msg
+            
         except Exception as e:
-            flash(f'An unexpected error occurred: {str(e)}', 'error')
-            return redirect(url_for('index'))
+            return "", "", f"❌ Error processing text: {str(e)}"
+            
+    except Exception as e:
+        return "", "", f"❌ An unexpected error occurred: {str(e)}"
+
+def create_interface():
+    """Create and return the Gradio interface"""
     
-    return render_template("index.html")
+    with gr.Blocks(
+        title="📚 Document Q&A with RAG",
+        theme=gr.themes.Soft(),
+        css="""
+        .gradio-container {
+            max-width: 1200px !important;
+            margin: auto !important;
+        }
+        """
+    ) as demo:
+        
+        gr.Markdown("""
+        # 📚 Document Q&A with RAG
+        
+        Upload your documents (PDF, TXT, DOCX, DOC) and ask questions about their content. 
+        The system uses Retrieval-Augmented Generation (RAG) to find relevant information and provide accurate answers.
+        
+        **Supported formats:** PDF, TXT, DOCX, DOC (max 50MB per file)
+        """)
+        
+        with gr.Row():
+            with gr.Column(scale=1):
+                # File upload
+                files_input = gr.File(
+                    label="📎 Upload Documents",
+                    file_count="multiple",
+                    file_types=[".pdf", ".txt", ".docx", ".doc"],
+                    height=150
+                )
+                
+                # Question input
+                question_input = gr.Textbox(
+                    label="❓ Your Question",
+                    placeholder="What would you like to know about the uploaded documents?",
+                    lines=3,
+                    max_lines=5
+                )
+                
+                # Submit button
+                submit_btn = gr.Button(
+                    "🔍 Ask Question",
+                    variant="primary",
+                    size="lg"
+                )
+                
+            with gr.Column(scale=2):
+                # Answer output
+                answer_output = gr.Markdown(
+                    label="💡 Answer",
+                    value="Upload documents and ask a question to get started!",
+                    height=300
+                )
+                
+        # Sources and errors in expandable sections
+        with gr.Row():
+            with gr.Column():
+                sources_output = gr.Markdown(
+                    label="📚 Sources & Context",
+                    visible=False
+                )
+                
+                error_output = gr.Markdown(
+                    label="⚠️ Warnings & Errors",
+                    visible=False
+                )
+        
+        # Handle form submission
+        def process_and_display(files, question):
+            if not files or not question:
+                return (
+                    "Please upload documents and enter a question.",
+                    gr.update(visible=False),
+                    gr.update(visible=False)
+                )
+            
+            # Get file paths
+            file_paths = [f.name for f in files] if files else []
+            
+            # Process documents and get answer
+            answer, sources, errors = process_documents_and_answer(file_paths, question)
+            
+            # Prepare outputs
+            if answer:
+                formatted_answer = f"## 💡 Answer\n\n{answer}"
+                sources_visible = True
+                errors_visible = bool(errors)
+            else:
+                formatted_answer = errors if errors else "No answer generated."
+                sources_visible = False
+                errors_visible = False
+            
+            return (
+                formatted_answer,
+                gr.update(value=sources, visible=sources_visible),
+                gr.update(value=errors, visible=errors_visible)
+            )
+        
+        # Connect the submit button
+        submit_btn.click(
+            fn=process_and_display,
+            inputs=[files_input, question_input],
+            outputs=[answer_output, sources_output, error_output]
+        )
+        
+        # Also allow Enter key in question box
+        question_input.submit(
+            fn=process_and_display,
+            inputs=[files_input, question_input],
+            outputs=[answer_output, sources_output, error_output]
+        )
+        
+        # Example section
+        gr.Markdown("""
+        ## 📖 Example Questions
+        
+        Try asking questions like:
+        - "What are the main points discussed in the document?"
+        - "Can you summarize the key findings?"
+        - "What does the document say about [specific topic]?"
+        - "What are the recommendations mentioned?"
+        """)
+    
+    return demo
 
-@app.errorhandler(413)
-def too_large(e):
-    """Handle file too large error"""
-    flash('File is too large. Maximum size is 50MB.', 'error')
-    return redirect(url_for('index'))
-
-@app.errorhandler(Exception)
-def handle_exception(e):
-    """Handle unexpected errors"""
-    flash(f'An error occurred: {str(e)}', 'error')
-    return redirect(url_for('index'))
-
-@app.route('/test-result')
-def test_result():
-    print("✅ Rendering result.html")
-    print("Question:", question)
-    print("Answer:", answer)
-    print("Chunks:", top_chunks)
-    print("Files:", processed_files)
-
-    return render_template("result.html", question="What is AI?", answer="AI is artificial intelligence.", top_chunks=["Chunk 1", "Chunk 2"])
-
+# Create the interface
+demo = create_interface()
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    # Launch the app
+    demo.launch(
+        server_name="0.0.0.0",
+        server_port=int(os.environ.get("PORT", 7860)),
+        share=False,
+        show_error=True
+    )
