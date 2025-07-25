@@ -9,7 +9,7 @@
     max-width: 1200px !important;
     margin: auto !important;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    background: linear-gradient(135deg, #FFFFF7 0%, #FBFBEB 100%);
+    background: linear-gradient(135deg, #FFFFF7 0%, #fbebebff 100%);
     min-height: 100vh;
     padding: 20px;
 }

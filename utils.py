@@ -17,21 +17,40 @@ collection = None
 def initialize_services():
     """Initialize ChromaDB and embedding model with proper error handling"""
     global model, chroma_client, collection
+    
+    # First, verify HF token is available
+    hf_token = os.environ.get("HF_API_TOKEN")
+    if not hf_token:
+        print("⚠️ HF_API_TOKEN not found in environment variables")
+        return False
+        
     try:
-        # Use temporary directory for ChromaDB in Hugging Face Spaces
-        # HF Spaces has limited persistent storage
+        # Initialize the embedding model first
+        print("Initializing embedding model...")
+        model = SentenceTransformer(
+            'sentence-transformers/all-MiniLM-L6-v2',
+            token=hf_token  # Pass the token for authentication
+        )
+        print("✅ Embedding model initialized successfully")
+        
+        # Now initialize ChromaDB
+        print("Initializing ChromaDB...")
         temp_dir = tempfile.mkdtemp()
         chroma_client = chromadb.PersistentClient(path=temp_dir)
         
         try:
             collection = chroma_client.get_collection(name="research_chunks")
-        except ValueError:
-            # Collection doesn't exist, create it
-            collection = chroma_client.create_collection(name="research_chunks")
-            
-        # Initialize the embedding model
-        model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
-        print("Services initialized successfully")
+            print("✅ Found existing ChromaDB collection")
+        except:
+            # Collection doesn't exist or error occurred, create a new one
+            print("Creating new ChromaDB collection...")
+            collection = chroma_client.create_collection(
+                name="research_chunks",
+                metadata={"description": "Document chunks for RAG"}
+            )
+            print("✅ Created new ChromaDB collection")
+        
+        print("✅ All services initialized successfully")
         return True
         
     except Exception as e:

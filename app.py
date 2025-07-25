@@ -7,11 +7,32 @@ from typing import List, Tuple, Optional
 from huggingface_hub import InferenceClient
 from utils import extract_text, chunk_text, embed_chunks, search_top_chunks, ask_groq_llm
 
-# Initialize Hugging Face client
-client = InferenceClient(
-    model="HuggingFaceH4/zephyr-7b-beta",
-    token=os.environ.get("HF_API_TOKEN")  # Uses the secret token from HF Space
-)
+# Initialize services with better error handling
+from utils import initialize_services
+
+print("🔄 Initializing services...")
+services_initialized = initialize_services()
+
+if not services_initialized:
+    print("⚠️ Warning: Services initialization failed - some features may be limited")
+else:
+    print("✅ Services initialized successfully")
+
+# Initialize Hugging Face client with better error handling
+hf_token = os.environ.get("HF_API_TOKEN")
+if not hf_token:
+    print("⚠️ Warning: HF_API_TOKEN not found - some features will be disabled")
+    client = None
+else:
+    try:
+        client = InferenceClient(
+            model="HuggingFaceH4/zephyr-7b-beta",
+            token=hf_token
+        )
+        print("✅ Hugging Face client initialized successfully")
+    except Exception as e:
+        print(f"⚠️ Warning: Failed to initialize Hugging Face client - {str(e)}")
+        client = None
 
 # Configuration
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
@@ -166,25 +187,45 @@ def create_interface():
         print(f"Warning: Could not load CSS file: {e}")
         # Provide basic CSS as fallback
         custom_css = """
-        .header-box { margin-bottom: 20px; }
-        .upload-box, .question-box, .answer-box { margin: 10px 0; }
-        .primary-button { background-color: #007bff; color: white; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+        }
+        .gradio-container {
+            font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif !important;
+        }
+        .header-box { 
+            margin-bottom: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif !important;
+        }
+        .upload-box, .question-box, .answer-box { 
+            margin: 10px 0;
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .primary-button { 
+            background-color: #007bff !important;
+            color: white !important;
+            padding: 10px 20px !important;
+            border-radius: 5px !important;
+            border: none !important;
+            cursor: pointer !important;
+        }
+        .primary-button:hover {
+            background-color: #0056b3 !important;
+        }
         """
     
     with gr.Blocks(
         title="📚 Document Q&A Assistant",
-        theme=gr.themes.Soft(
-            primary_hue="blue",
-            secondary_hue="slate",
-            neutral_hue="slate",
-            font=("Inter", "system-ui", "sans-serif")
-        ),
+        theme=gr.themes.Default(),
         css=custom_css
     ) as demo:
         
         with gr.Group(elem_classes="header-box"):
             gr.Markdown("""
-            # 🤖 GenBot - Intelligent Document Assistant
+            # <h1>🤖 GenBot - Intelligent Document Assistant</h1>
             
             Upload your documents and get AI-powered insights. Ask questions about your PDFs, documents, 
             and research papers to get accurate, context-aware answers with source references.
@@ -273,12 +314,33 @@ def create_interface():
         
         # Handle form submission
         def process_and_display(files, question):
-            if not files or not question.strip():
+            try:
+                if not files or not question.strip():
+                    return (
+                        "📋 **Instructions:**\n\n1. Upload one or more documents using the file upload area\n2. Enter your question in the text box\n3. Click 'Get Answer' to receive AI-powered insights\n\n*Both files and question are required.*",
+                        "Upload documents and ask a question to see source information.",
+                        "",
+                        gr.update(visible=False)
+                    )
+                
+                # Validate services initialization
+                if not services_initialized:
+                    return (
+                        "❌ **Service Error**\n\nRequired services are not properly initialized. Please check the following:\n\n1. HF_API_TOKEN is set\n2. GROQ_API_KEY is set\n3. All required models are accessible",
+                        "Services initialization failed",
+                        "Service initialization error",
+                        gr.update(visible=True)
+                    )
+                    
+                print(f"Processing request for {len(files)} files with question: {question[:100]}...")
+            except Exception as e:
+                error_msg = f"❌ **Error during request processing**: {str(e)}"
+                print(f"Error in process_and_display: {str(e)}")
                 return (
-                    "📋 **Instructions:**\n\n1. Upload one or more documents using the file upload area\n2. Enter your question in the text box\n3. Click 'Get Answer' to receive AI-powered insights\n\n*Both files and question are required.*",
-                    "Upload documents and ask a question to see source information.",
-                    "",
-                    gr.update(visible=False)
+                    error_msg,
+                    "Processing error occurred",
+                    str(e),
+                    gr.update(visible=True)
                 )
             
             # Show processing message
@@ -370,17 +432,26 @@ def create_interface():
 
 if __name__ == "__main__":
     try:
-        # Create and launch the interface
+        # Create and launch the interface with proper API configuration
         demo = create_interface()
         demo.launch(
             server_name="0.0.0.0",
             server_port=7860,
             share=True,
-            show_error=True
-            # Removed show_tips parameter as it doesn't exist
+            show_error=True,
+            enable_queue=True,  # Enable queuing for better request handling
+            max_threads=4,      # Limit concurrent processing
+            auth=None,          # Disable authentication
+            debug=True         # Enable debug mode for better error messages
         )
     except Exception as e:
         print(f"Error launching app: {e}")
+        # Log more detailed error information
+        import traceback
+        print("Detailed error traceback:")
+        print(traceback.format_exc())
+        
         # Fallback launch with minimal parameters
+        print("Attempting fallback launch...")
         demo = create_interface()
-        demo.launch()
+        demo.launch(show_error=True)
