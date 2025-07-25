@@ -19,7 +19,7 @@ else:
     print("✅ Services initialized successfully")
 
 # Initialize Hugging Face client with better error handling
-hf_token = os.environ.get("HF_API_TOKEN")
+hf_token = os.environ.get("HF_TOKEN")
 if not hf_token:
     print("⚠️ Warning: HF_API_TOKEN not found - some features will be disabled")
     client = None
@@ -140,7 +140,14 @@ class DocumentProcessor:
                 context = "\n\n".join(top_chunks)
                 
                 # Get answer from LLM
-                answer = ask_groq_llm(context, question)
+                #answer = ask_groq_llm(context, question)
+                if context and context.strip():
+                    print("✅ Context available, sending to LLM...")
+                    answer = ask_groq_llm(context, question)
+                else:
+                    print("❌ No context extracted — skipping LLM call.")
+                    return "", "", "❌ No relevant context could be generated from the uploaded files"
+
                 
                 if not answer:
                     return "", "", "❌ Failed to generate answer from the LLM"
@@ -188,7 +195,7 @@ def create_interface():
         # Provide basic CSS as fallback
         custom_css = """
         body {
-            font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+            font-family: 'Segoe UI', 'Arial', sans-serif;
         }
         .gradio-container {
             font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif !important;
@@ -215,6 +222,13 @@ def create_interface():
         .primary-button:hover {
             background-color: #0056b3 !important;
         }
+        .file-upload, .question-input {
+            margin-top: 10px;
+        }
+        .answer-box {
+        min-height: 300px;
+        }
+
         """
     
     with gr.Blocks(
@@ -225,7 +239,7 @@ def create_interface():
         
         with gr.Group(elem_classes="header-box"):
             gr.Markdown("""
-            # <h1>🤖 GenBot - Intelligent Document Assistant</h1>
+            # 🤖 GenBot - Intelligent Document Assistant
             
             Upload your documents and get AI-powered insights. Ask questions about your PDFs, documents, 
             and research papers to get accurate, context-aware answers with source references.
@@ -430,28 +444,32 @@ def create_interface():
     return demo
 
 
-if __name__ == "__main__":
-    try:
+#if __name__ == "__main__":
+    #try:
         # Create and launch the interface with proper API configuration
-        demo = create_interface()
-        demo.launch(
-            server_name="0.0.0.0",
-            server_port=7860,
-            share=True,
-            show_error=True,
-            enable_queue=True,  # Enable queuing for better request handling
-            max_threads=4,      # Limit concurrent processing
-            auth=None,          # Disable authentication
-            debug=True         # Enable debug mode for better error messages
-        )
-    except Exception as e:
-        print(f"Error launching app: {e}")
+        #demo = create_interface()
+        #demo.launch()
+            #server_name="0.0.0.0",
+            #server_port=7860,
+            #share=True,
+            #show_error=True,
+            #enable_queue=True,  # Enable queuing for better request handling
+            #max_threads=4,      # Limit concurrent processing
+            #auth=None,          # Disable authentication
+            #debug=True         # Enable debug mode for better error messages
+        #)
+    #except Exception as e:
+        #print(f"Error launching app: {e}")
         # Log more detailed error information
-        import traceback
-        print("Detailed error traceback:")
-        print(traceback.format_exc())
+        #import traceback
+        #print("Detailed error traceback:")
+        #print(traceback.format_exc())
         
         # Fallback launch with minimal parameters
-        print("Attempting fallback launch...")
-        demo = create_interface()
-        demo.launch(show_error=True)
+        #print("Attempting fallback launch...")
+        #demo = create_interface()
+        #demo.launch(show_error=True)
+demo = create_interface()
+print("💥 Reached demo.launch()")
+
+demo.launch()

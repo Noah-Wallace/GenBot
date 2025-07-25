@@ -19,24 +19,27 @@ def initialize_services():
     global model, chroma_client, collection
     
     # First, verify HF token is available
-    hf_token = os.environ.get("HF_API_TOKEN")
+    hf_token = os.environ.get("HF_TOKEN")
+    print("🔍 DEBUG: HF_TOKEN found?" , bool(hf_token))
+    print("🔍 DEBUG: GROQ_API_KEY found?" , bool(os.environ.get("GROQ_API_KEY")))
+
     if not hf_token:
-        print("⚠️ HF_API_TOKEN not found in environment variables")
+        print("⚠️ HF_TOKEN not found in environment variables")
         return False
         
     try:
         # Initialize the embedding model first
         print("Initializing embedding model...")
-        model = SentenceTransformer(
-            'sentence-transformers/all-MiniLM-L6-v2',
-            token=hf_token  # Pass the token for authentication
-        )
+        model = SentenceTransformer('all-MiniLM-L6-v2')  # ✅ no token needed
+
         print("✅ Embedding model initialized successfully")
         
         # Now initialize ChromaDB
         print("Initializing ChromaDB...")
         temp_dir = tempfile.mkdtemp()
-        chroma_client = chromadb.PersistentClient(path=temp_dir)
+        #chroma_client = chromadb.PersistentClient(path=temp_dir)
+        chroma_client = chromadb.EphemeralClient()
+
         
         try:
             collection = chroma_client.get_collection(name="research_chunks")
@@ -268,7 +271,7 @@ Answer:"""
 # Initialize services when module is imported
 print("Initializing services...")
 success = initialize_services()
-if success:
-    print("✅ Services initialized successfully")
-else:
-    print("⚠️ Services initialization failed - some features may not work")
+#if success:
+#    print("✅ Services initialized successfully")
+#else:
+#   print("⚠️ Services initialization failed - some features may not work")
