@@ -11,4 +11,4 @@ jobs:
       - name: Deploy to Hugging Face Space
         run: |
           curl -X POST https://huggingface.co/api/spaces/Noah-Wallace/GenBot/restart \
-            -H "Authorization: Bearer ${{ secrets.HF_TOKEN }}"
+            -H "Authorization: Bearer ${{ secrets.cicd }}"
