@@ -1,0 +1,14 @@
+name: Deploy to Hugging Face Spaces
+
+on:
+  push:
+    branches: [ main ]  # or your branch name
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to Hugging Face Space
+        run: |
+          curl -X POST https://huggingface.co/api/spaces/Noah-Wallace/GenBot/restart \
+            -H "Authorization: Bearer ${{ secrets.HF_TOKEN }}"
