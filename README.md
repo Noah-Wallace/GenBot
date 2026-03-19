@@ -189,11 +189,6 @@ Access at: [http://localhost:5000](http://localhost:5000)
 * 📝 Export answers as downloadable PDF
 * ⚛️ React + Flask hybrid upgrade
 
----
-
-### 📸 Screenshots
-
-> 🖼️ Add screenshots inside a `/screenshots` folder and reference them here with `![Screenshot](screenshots/upload.png)`
 
 ---
 
